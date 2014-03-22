@@ -461,12 +461,22 @@ public class MatrixProject extends AbstractProject<MatrixProject,MatrixBuild> im
         return r;
     }
 
-    public Layouter<MatrixConfiguration> getLayouter() {
+    /**
+     * @param fixNull whether not to return null for an invalid combination (that is, a combination disabled with combinationFilter).
+     * @return layouter for this matrix project.
+     */
+    public Layouter<MatrixConfiguration> getLayouter(final boolean fixNull) {
         return new Layouter<MatrixConfiguration>(axes) {
             protected MatrixConfiguration getT(Combination c) {
-                return getItem(c);
+                MatrixConfiguration conf = getItem(c);
+                return (!fixNull || conf != null)?conf:new MatrixConfiguration(MatrixProject.this, c);
             }
         };
+    }
+
+    @Deprecated
+    public Layouter<MatrixConfiguration> getLayouter() {
+        return getLayouter(false);
     }
 
     @Override
