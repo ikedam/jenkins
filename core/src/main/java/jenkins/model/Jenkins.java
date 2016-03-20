@@ -199,6 +199,8 @@ import jenkins.InitReactorRunner;
 import jenkins.model.ProjectNamingStrategy.DefaultProjectNamingStrategy;
 import jenkins.security.ConfidentialKey;
 import jenkins.security.ConfidentialStore;
+import jenkins.security.RSAConfidentialKey;
+import jenkins.security.RSADigitalSignatureConfidentialKey;
 import jenkins.security.SecurityListener;
 import jenkins.security.MasterToSlaveCallable;
 import jenkins.slaves.WorkspaceLocator;
@@ -4380,6 +4382,29 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         }
     }
 
+    private transient RSAConfidentialKey transientKey;
+
+    /**
+     * @return the keypair valid for the current instance.
+     * @since TODO
+     */
+    public synchronized RSAConfidentialKey getTransientKey() {
+        if (transientKey == null) {
+            transientKey = new RSADigitalSignatureConfidentialKey(getClass(), "transient");
+        }
+        return transientKey;
+    }
+
+    /**
+     * serves the public key to encode requests.
+     * 
+     * @param rsp
+     * @since TODO
+     */
+    public void doTransientPublicKey(StaplerResponse rsp) throws IOException {
+        rsp.getWriter().print(getTransientKey().getEncodedPublicKey());
+    }
+
     public static class MasterComputer extends Computer {
         protected MasterComputer() {
             super(Jenkins.getInstance());
@@ -4667,7 +4692,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         "/signup",
         "/tcpSlaveAgentListener",
         "/federatedLoginService/",
-        "/securityRealm"
+        "/securityRealm",
+        "/transientPublicKey"
     );
 
     /**

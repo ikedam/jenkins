@@ -129,6 +129,7 @@ ${h.initPageVariables(context)}
 
     <script src="${resURL}/scripts/hudson-behavior.js" type="text/javascript"></script>
     <script src="${resURL}/scripts/sortable.js" type="text/javascript"/>
+    <script src="${resURL}/scripts/jsencrypt.min.js" type="text/javascript"></script>
 
     <j:if test="${extensionsAvailable}">
       <script>

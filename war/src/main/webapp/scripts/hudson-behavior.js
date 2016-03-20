@@ -1086,6 +1086,18 @@ var jenkinsRules = {
         }
     },
 
+    "INPUT.encrypt" : function(e) {
+        // populate data-publickey with the public key of Jenkins core.
+        new Ajax.Request(
+            rootURL + "/transientPublicKey",
+            {
+              onComplete : function(x) {
+                e.setAttribute("data-publickey", x.responseText);
+              }
+            }
+        );
+    },
+
     // dropdownList.jelly
     "SELECT.dropdownList" : function(e) {
         if(isInsideRemovable(e))    return;
@@ -2576,6 +2588,30 @@ function buildFormTree(form) {
                 break;
 
             default:
+                if (Element.hasClassName(e,"encrypt")) {
+                    // 1. Remove name attribute not to send the raw value
+                    // 2. Encrypt the value and put it into json.
+                    
+                    var on = e.getAttribute("originalName");
+                    if (!on) {
+                        on = e.name;
+                        e.setAttribute("originalName",on);
+                        e.removeAttribute("name");
+                    }
+                    
+                    var value = e.value;
+                    var pubKey = e.getAttribute("data-publickey");
+                    if (pubKey) {
+                        var encrypt = new JSEncrypt();
+                        encrypt.setPublicKey(pubKey);
+                        value = '{ENCRYPTED}' + encrypt.encrypt(value);
+                    }
+                    
+                    p = findParent(e);
+                    addProperty(p, on, value);
+                    break;
+                }
+                
                 p = findParent(e);
                 addProperty(p, e.name, e.value);
                 break;
