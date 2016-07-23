@@ -36,7 +36,7 @@ l.layout(norefresh:true, permission:app.ADMINISTER, title:my.displayName, csscla
                 f.entry(title:_("Access Control")) {
                     table(style:"width:100%") {
                         f.descriptorRadioList(title:_("Security Realm"),varName:"realm",         instance:app.securityRealm,         descriptors:SecurityRealm.all())
-                        f.descriptorRadioList(title:_("Authorization"), varName:"authorization", instance:app.authorizationStrategy, descriptors:AuthorizationStrategy.all())
+                        f.descriptorRadioList(title:_("Authorization"), varName:"authorization", instance:app.baseAuthorizationStrategy, descriptors:AuthorizationStrategy.all())
                     }
                 }
             }

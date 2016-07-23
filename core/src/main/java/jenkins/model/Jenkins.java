@@ -205,6 +205,7 @@ import jenkins.install.SetupWizard;
 import jenkins.model.ProjectNamingStrategy.DefaultProjectNamingStrategy;
 import jenkins.security.ConfidentialKey;
 import jenkins.security.ConfidentialStore;
+import jenkins.security.OverriddenAuthorizationStrategy;
 import jenkins.security.SecurityListener;
 import jenkins.security.MasterToSlaveCallable;
 import jenkins.slaves.WorkspaceLocator;
@@ -375,6 +376,9 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      */
     private Boolean useSecurity;
 
+    @Deprecated
+    private transient AuthorizationStrategy authorizationStrategy;
+
     /**
      * Controls how the
      * <a href="http://en.wikipedia.org/wiki/Authorization">authorization</a>
@@ -384,7 +388,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      *
      * Never null.
      */
-    private volatile AuthorizationStrategy authorizationStrategy = AuthorizationStrategy.UNSECURED;
+    private volatile AuthorizationStrategy baseAuthorizationStrategy = AuthorizationStrategy.UNSECURED;
 
     /**
      * Controls a part of the
@@ -942,6 +946,10 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         if (jdks == null) {
             jdks = new ArrayList<>();
         }
+        if (authorizationStrategy != null) {
+            baseAuthorizationStrategy = authorizationStrategy;
+            authorizationStrategy = null;
+        }
         return this;
     }
     
@@ -1479,8 +1487,8 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      */
     @Exported(name="jobs")
     public List<TopLevelItem> getItems() {
-        if (authorizationStrategy instanceof AuthorizationStrategy.Unsecured ||
-            authorizationStrategy instanceof FullControlOnceLoggedInAuthorizationStrategy) {
+        if (baseAuthorizationStrategy instanceof AuthorizationStrategy.Unsecured ||
+            baseAuthorizationStrategy instanceof FullControlOnceLoggedInAuthorizationStrategy) {
             return new ArrayList(items.values());
         }
 
@@ -2232,7 +2240,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      */
     @Exported
     public boolean isUseSecurity() {
-        return securityRealm!=SecurityRealm.NO_AUTHENTICATION || authorizationStrategy!=AuthorizationStrategy.UNSECURED;
+        return securityRealm!=SecurityRealm.NO_AUTHENTICATION || baseAuthorizationStrategy!=AuthorizationStrategy.UNSECURED;
     }
 
     public boolean isUseProjectNamingStrategy(){
@@ -2299,11 +2307,16 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
         }
     }
 
+    @Deprecated
     public void setAuthorizationStrategy(AuthorizationStrategy a) {
+        setBaseAuthorizationStrategy(a);
+    }
+
+    public void setBaseAuthorizationStrategy(AuthorizationStrategy a) {
         if (a == null)
             a = AuthorizationStrategy.UNSECURED;
         useSecurity = true;
-        authorizationStrategy = a;
+        baseAuthorizationStrategy = a;
     }
 
     public boolean isDisableRememberMe() {
@@ -2317,7 +2330,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
     public void disableSecurity() {
         useSecurity = null;
         setSecurityRealm(SecurityRealm.NO_AUTHENTICATION);
-        authorizationStrategy = AuthorizationStrategy.UNSECURED;
+        baseAuthorizationStrategy = AuthorizationStrategy.UNSECURED;
     }
 
     public void setProjectNamingStrategy(ProjectNamingStrategy ns) {
@@ -2426,15 +2439,25 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
      */
     @Override
     public ACL getACL() {
-        return authorizationStrategy.getRootACL();
+        return getAuthorizationStrategy().getRootACL();
     }
 
     /**
      * @return
      *      never null.
      */
+    @Nonnull
     public AuthorizationStrategy getAuthorizationStrategy() {
-        return authorizationStrategy;
+        return new OverriddenAuthorizationStrategy(getBaseAuthorizationStrategy());
+    }
+
+    /**
+     * @return
+     *      never null.
+     */
+    @Nonnull
+    public AuthorizationStrategy getBaseAuthorizationStrategy() {
+        return baseAuthorizationStrategy;
     }
 
     /**
@@ -2868,15 +2891,15 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 if (useSecurity!=null && !useSecurity) {
                     // forced reset to the unsecure mode.
                     // this works as an escape hatch for people who locked themselves out.
-                    authorizationStrategy = AuthorizationStrategy.UNSECURED;
+                    baseAuthorizationStrategy = AuthorizationStrategy.UNSECURED;
                     setSecurityRealm(SecurityRealm.NO_AUTHENTICATION);
                 } else {
                     // read in old data that doesn't have the security field set
-                    if(authorizationStrategy==null) {
+                    if(baseAuthorizationStrategy==null) {
                         if(useSecurity==null)
-                            authorizationStrategy = AuthorizationStrategy.UNSECURED;
+                            baseAuthorizationStrategy = AuthorizationStrategy.UNSECURED;
                         else
-                            authorizationStrategy = new LegacyAuthorizationStrategy();
+                            baseAuthorizationStrategy = new LegacyAuthorizationStrategy();
                     }
                     if(securityRealm==null) {
                         if(useSecurity==null)
